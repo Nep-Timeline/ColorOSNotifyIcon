@@ -2155,49 +2155,6 @@ object SystemUIHooker : YukiBaseHooker() {
                 name = "updateExpandIconColorFilter"
                 parameterCount = 1
             }?.hook()?.intercept()
-            // 动态处理通知展开
-            ExpandableNotificationRowClass.resolve().optional().apply {
-                firstMethodOrNull {
-                    name = "onExpansionChanged"
-                    parameterCount = 2
-                }?.hook()?.before {
-                    ExpandableNotificationRowClass.resolve().optional()
-                        .firstFieldOrNull { name = "mChildrenContainer" }
-                        ?.of(instance)?.getQuietly()?.let {
-                            it.asResolver().optional().firstFieldOrNull {
-                                name = "mCurrentHeader"
-                                superclass()
-                            }?.get()
-                        }.also { header ->
-                            header?.asResolver()?.optional()?.firstFieldOrNull {
-                                name = "mIcon"
-                            }?.get<ImageView>()?.apply {
-                                ExpandableNotificationRowClass.resolve().optional()
-                                    .firstMethodOrNull { name = "getEntry" }
-                                    ?.of(instance)?.invokeQuietly()?.let {
-                                        it.asResolver().optional().firstMethodOrNull {
-                                            name = "getSbn"
-                                        }?.invoke<StatusBarNotification>()
-                                    }.also { nf ->
-                                        nf?.notification?.also {
-                                            if (!isMediaNotification(context, it, context.packageName))
-                                                it.smallIcon.loadDrawable(context)?.also { iconDrawable ->
-                                                    compatNotifyIcon(
-                                                        context = context,
-                                                        nf = nf,
-                                                        isGrayscaleIcon = isGrayscaleIcon(context, iconDrawable),
-                                                        packageName = context.packageName,
-                                                        drawable = iconDrawable,
-                                                        iconColor = it.color,
-                                                        iconView = this
-                                                    )
-                                                }
-                                        }
-                                    }
-                            }
-                        }
-                }
-            }
             // 替换通知图标和样式
             OplusNotificationHeaderViewWrapperExImpClass?.resolve()?.optional()?.apply {
                 firstMethodOrNull {
@@ -2385,37 +2342,6 @@ object SystemUIHooker : YukiBaseHooker() {
 
             // 替换通知图标和样式
             NotificationHeaderViewWrapperClass.resolve().optional().apply {
-                method {
-                    name { it == "updateExpandability" || it == "setExpanded" }
-                }.hookAll().before {
-                    firstFieldOrNull { name = "mIcon" }?.of(instance)?.get<ImageView>()?.apply {
-                        ExpandableNotificationRowClass.resolve().optional()
-                            .firstMethodOrNull { name = "getEntry" }
-                            ?.of(NotificationViewWrapperClass.resolve().optional().firstFieldOrNull {
-                                name = "mRow"
-                            }?.of(instance)?.get())?.invokeQuietly()?.let {
-                                it.asResolver().optional().firstMethodOrNull {
-                                    name = "getSbn"
-                                }?.invoke<StatusBarNotification>()
-                            }.also { nf ->
-                                nf?.notification?.also {
-                                    if (!isMediaNotification(context, it, context.packageName))
-                                        it.smallIcon.loadDrawable(context)?.also { iconDrawable ->
-                                            compatNotifyIcon(
-                                                context = context,
-                                                nf = nf,
-                                                isGrayscaleIcon = isGrayscaleIcon(context, iconDrawable),
-                                                packageName = context.packageName,
-                                                drawable = iconDrawable,
-                                                iconColor = it.color,
-                                                iconView = this
-                                            )
-                                        }
-                                }
-                            }
-                    }
-                }
-
                 method {
                     name { it == "resolveHeaderViews" || it == "onContentUpdated" }
                 }.hookAll().after {
